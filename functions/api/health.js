@@ -7,14 +7,14 @@ export async function onRequestGet(context) {
   };
 
   try {
-    // D1 binding은 Pages 프로젝트 Settings > Bindings 에서 Variable name을 DB로 설정해야 함
-    // 예시는 context.env.<BINDING>.prepare(...) 형태로 접근함 <!--citation:3-->
-    const row = await context.env.DB
-      .prepare("SELECT sqlite_version() AS v")
-      .first();
+    // D1 연결 확인: 단순히 1을 조회하여 응답이 오는지 체크합니다.
+    const result = await context.env.DB
+      .prepare("SELECT 1")
+      .run();
 
-    out.d1.ok = true;
-    out.d1.sqlite_version = row?.v ?? null;
+    if (result.success) {
+      out.d1.ok = true;
+    }
   } catch (e) {
     out.ok = false;
     out.d1.ok = false;
