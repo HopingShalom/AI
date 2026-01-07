@@ -1,3 +1,13 @@
+function hasCrisisKeyword(text) {
+  if (!text) return false;
+  const lower = String(text).toLowerCase();
+  const patterns = [
+    '자살', '죽고 싶', '죽고싶', '삶을 끝내고 싶', '극단적인 선택',
+    '자해', 'self-harm', 'self harm', 'harm myself', 'kill myself'
+  ];
+  return patterns.some(p => lower.includes(p));
+}
+
 export async function onRequestPost(context) {
   const authHeader = context.request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -141,13 +151,16 @@ export async function onRequestPost(context) {
     await context.env.DB.prepare(
       `UPDATE ai_conversations SET updated_at = datetime('now') WHERE id = ?`
     ).bind(convId).run();
+    
+const crisisAlert = hasCrisisKeyword(message) || hasCrisisKeyword(aiReply);
 
-    return Response.json({
-      ok: true,
-      conversationId: convId,
-      userMessage: { id: userMsgId, role: 'user', content: message },
-      aiMessage: { id: aiMsgId, role: 'assistant', content: aiReply }
-    });
+return Response.json({
+  ok: true,
+  conversationId: convId,
+  userMessage: { id: userMsgId, role: 'user', content: message },
+  aiMessage: { id: aiMsgId, role: 'assistant', content: aiReply },
+  crisisAlert
+});
   } catch (e) {
     return Response.json({ ok: false, error: e?.message || String(e) }, { status: 500 });
   }
