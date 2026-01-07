@@ -230,49 +230,66 @@ $('#backToListBtn').addEventListener('click', () => {
 });
 
 $('#sendBtn').addEventListener('click', sendMessage);
-$('#chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-
+$('#chatInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
 async function sendMessage() {
   const input = $('#chatInput');
-  const message = input.value.trim();
-  if (!message) return;
-  input.value = '';
   const container = $('#messagesContainer');
+  if (!input || !container) return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  // 입력 비우기
+  input.value = '';
+
+  // 첫 메시지면 안내 문구 제거
   if (container.querySelector('.muted')) container.innerHTML = '';
-  container.innerHTML += `<div class="message user">${message}</div>`;
+
+  // 내 메시지 표시
+  container.innerHTML += `<div class="message user">${text.replace(/\n/g, '<br/>')}</div>`;
+  // 입력 중 표시
   container.innerHTML += `<div class="message assistant" id="typing">입력 중...</div>`;
   container.scrollTop = container.scrollHeight;
-const data = await api('/api/dm/send', {
-  method: 'POST',
-  body: JSON.stringify({
-    conversationId: currentDmConversationId,
-    content: text
-  })
-});
 
-if (!data.ok) {
-  // ... 에러 처리 ...
-  return;
-}
+  try {
+    const data = await api('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversationId: currentConversationId, // 이전 대화 있으면 이어서, 없으면 null
+        message: text
+      })
+    });
 
-// 위기 감지 플래그가 있으면 도움 배너 표시
-if (data.crisisAlert) {
-  showCrisisBanner();
-}
+    $('#typing')?.remove();
 
-// 이후 /api/dm/messages 재호출 및 렌더링
-const reload = await api(`/api/dm/messages?conversationId=${encodeURIComponent(currentDmConversationId)}`);
- 
-  $('#typing')?.remove();
-  if (data.ok) {
+    if (!data.ok) {
+      container.innerHTML += `<div class="message assistant" style="color:var(--danger);">오류: ${data.error || '응답 생성에 실패했습니다.'}</div>`;
+      return;
+    }
+
+    // 백엔드에서 새 conversationId가 넘어오므로 갱신
     currentConversationId = data.conversationId;
-    container.innerHTML += `<div class="message assistant">${data.aiMessage.content}</div>`;
+
+    // AI 응답 렌더링
+    const aiText = data.aiMessage && data.aiMessage.content
+      ? String(data.aiMessage.content).replace(/\n/g, '<br/>')
+      : '(응답 내용이 비어 있습니다)';
+
+    container.innerHTML += `<div class="message assistant">${aiText}</div>`;
     container.scrollTop = container.scrollHeight;
+
+    // 위기 키워드 감지 시 배너 표시
     if (data.crisisAlert) {
-  showCrisisBanner();
-}
-  } else {
-    container.innerHTML += `<div class="message assistant" style="color:var(--danger);">오류: ${data.error}</div>`;
+      showCrisisBanner();
+    }
+  } catch (e) {
+    $('#typing')?.remove();
+    container.innerHTML += `<div class="message assistant" style="color:var(--danger);">네트워크 오류</div>`;
   }
 }
 
