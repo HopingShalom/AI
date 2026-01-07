@@ -18,105 +18,52 @@ body {
 }
 
 /* 모달 */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .modal-overlay.hidden { display: none; }
-.modal {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 24px;
-  width: 90%;
-  max-width: 360px;
-}
+.modal { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; width: 90%; max-width: 360px; }
 .modal h2 { margin-bottom: 16px; font-size: 20px; }
-.modal input {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
-}
-.modal button {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--bg);
-  font-weight: 600;
-  cursor: pointer;
-}
-.modal button:hover { opacity: 0.9; }
+.modal input, .search-input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 14px; }
+.modal button, .btn-primary { width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer; }
+.btn-primary:hover { opacity: 0.9; }
 .auth-switch { margin-top: 12px; font-size: 13px; color: var(--muted); }
 .auth-switch a { color: var(--accent); text-decoration: none; }
 .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 12px; color: var(--muted); }
 .error { color: var(--danger); font-size: 13px; margin-top: 8px; }
+.muted { color: var(--muted); }
+.msg { font-size: 13px; margin-top: 8px; }
 
 /* 헤더 */
-.topbar {
-  position: sticky;
-  top: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: rgba(11,11,15,0.95);
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(10px);
-  z-index: 100;
-}
+.topbar { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(11,11,15,0.95); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); z-index: 100; }
 .brand { font-weight: 800; font-size: 18px; }
 .user-info { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-#logoutBtn {
-  padding: 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 12px;
-}
+#logoutBtn { padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; }
 
 /* 메인 */
 .screen { padding: 16px 16px 90px; }
-.page {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 16px;
-  min-height: 200px;
-}
-.page h1 { font-size: 18px; margin-bottom: 12px; }
-.page p { color: var(--muted); line-height: 1.6; }
+.page { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-height: 300px; }
+.page h1 { font-size: 18px; margin-bottom: 16px; }
 .hidden { display: none !important; }
 
 /* 탭바 */
-.tabbar {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  background: rgba(11,11,15,0.97);
-  border-top: 1px solid var(--line);
-  backdrop-filter: blur(10px);
-}
-.tab {
-  padding: 14px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 600;
-  cursor: pointer;
-}
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(11,11,15,0.97); border-top: 1px solid var(--line); backdrop-filter: blur(10px); }
+.tab { padding: 14px; border: none; background: transparent; color: var(--muted); font-weight: 600; cursor: pointer; }
 .tab.active { color: var(--accent); }
+
+/* 프로필 */
+.profile-header { margin-bottom: 20px; }
+.profile-name { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.profile-stats { font-size: 14px; color: var(--muted); display: flex; gap: 16px; }
+.profile-section { margin-bottom: 16px; }
+.profile-section label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.profile-section textarea, .profile-section select { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 14px; resize: vertical; min-height: 60px; }
+.profile-section select { min-height: auto; }
+.profile-section p { font-size: 14px; }
+.badge { background: var(--accent); color: var(--bg); font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; font-weight: 600; }
+
+/* 검색/유저 목록 */
+.user-list { margin-top: 16px; }
+.user-card { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; }
+.user-name { font-weight: 600; }
+.user-purpose { font-size: 12px; color: var(--muted); margin-left: 8px; }
+.btn-follow { padding: 6px 14px; border: 1px solid var(--accent); border-radius: 6px; background: transparent; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-follow.following { background: var(--accent); color: var(--bg); }
