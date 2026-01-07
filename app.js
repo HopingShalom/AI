@@ -3,47 +3,45 @@ let currentUser = null;
 let authToken = localStorage.getItem('authToken');
 let isRegisterMode = false;
 
-// ===== DOM =====
+// ===== DOM 헬퍼 =====
 const $ = (sel) => document.querySelector(sel);
-const authModal = $('#authModal');
-const authForm = $('#authForm');
-const authTitle = $('#authTitle');
-const authSubmit = $('#authSubmit');
-const authSwitchText = $('#authSwitchText');
-const authSwitchLink = $('#authSwitchLink');
-const registerFields = $('#registerFields');
-const authError = $('#authError');
-const userName = $('#userName');
-const logoutBtn = $('#logoutBtn');
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// ===== API 헬퍼 =====
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const res = await fetch(path, { ...options, headers });
+  return res.json();
+}
 
 // ===== 페이지 전환 =====
 function showPage(tab) {
-  document.querySelectorAll('.page').forEach(el => el.classList.add('hidden'));
+  $$('.page').forEach(el => el.classList.add('hidden'));
   $(`#page-${tab}`)?.classList.remove('hidden');
-  document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+  $$('.tab').forEach(btn => btn.classList.remove('active'));
   $(`.tab[data-tab="${tab}"]`)?.classList.add('active');
+
+  // 탭별 초기화
+  if (tab === 'search') loadSearchUsers();
+  if (tab === 'profile') renderProfile();
 }
 
-// ===== 인증 모드 전환 =====
+// ===== 인증 =====
+const authModal = $('#authModal');
+const authForm = $('#authForm');
+const authError = $('#authError');
+
 function toggleAuthMode() {
   isRegisterMode = !isRegisterMode;
-  if (isRegisterMode) {
-    authTitle.textContent = '회원가입';
-    authSubmit.textContent = '가입하기';
-    authSwitchText.textContent = '이미 계정이 있으신가요?';
-    authSwitchLink.textContent = '로그인';
-    registerFields.classList.remove('hidden');
-  } else {
-    authTitle.textContent = '로그인';
-    authSubmit.textContent = '로그인';
-    authSwitchText.textContent = '계정이 없으신가요?';
-    authSwitchLink.textContent = '회원가입';
-    registerFields.classList.add('hidden');
-  }
+  $('#authTitle').textContent = isRegisterMode ? '회원가입' : '로그인';
+  $('#authSubmit').textContent = isRegisterMode ? '가입하기' : '로그인';
+  $('#authSwitchText').textContent = isRegisterMode ? '이미 계정이 있으신가요?' : '계정이 없으신가요?';
+  $('#authSwitchLink').textContent = isRegisterMode ? '로그인' : '회원가입';
+  $('#registerFields').classList.toggle('hidden', !isRegisterMode);
   authError.classList.add('hidden');
 }
 
-// ===== 로그인/회원가입 처리 =====
 authForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   authError.classList.add('hidden');
@@ -55,122 +53,179 @@ authForm.addEventListener('submit', async (e) => {
     if (isRegisterMode) {
       const displayName = $('#authName').value;
       const purposeTag = $('#authPurpose').value;
-      const ageCheck = $('#authAge').checked;
-
-      if (!ageCheck) {
+      if (!$('#authAge').checked) {
         authError.textContent = '만 15세 이상만 가입할 수 있습니다';
         authError.classList.remove('hidden');
         return;
       }
-      if (!displayName || !purposeTag) {
-        authError.textContent = '모든 필드를 입력해주세요';
-        authError.classList.remove('hidden');
-        return;
-      }
-
-      const res = await fetch('/api/auth/register', {
+      const data = await api('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, displayName, purposeTag })
       });
-      const data = await res.json();
-
-      if (!data.ok) {
-        authError.textContent = data.error;
-        authError.classList.remove('hidden');
-        return;
-      }
-
+      if (!data.ok) { authError.textContent = data.error; authError.classList.remove('hidden'); return; }
       localStorage.setItem('authToken', data.token);
       authToken = data.token;
-      await loadCurrentUser();
     } else {
-      const res = await fetch('/api/auth/login', {
+      const data = await api('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      const data = await res.json();
-
-      if (!data.ok) {
-        authError.textContent = data.error;
-        authError.classList.remove('hidden');
-        return;
-      }
-
+      if (!data.ok) { authError.textContent = data.error; authError.classList.remove('hidden'); return; }
       localStorage.setItem('authToken', data.token);
       authToken = data.token;
-      await loadCurrentUser();
     }
+    await loadCurrentUser();
   } catch (err) {
-    authError.textContent = '네트워크 오류가 발생했습니다';
+    authError.textContent = '네트워크 오류';
     authError.classList.remove('hidden');
   }
 });
 
-authSwitchLink.addEventListener('click', (e) => {
-  e.preventDefault();
-  toggleAuthMode();
-});
+$('#authSwitchLink').addEventListener('click', (e) => { e.preventDefault(); toggleAuthMode(); });
 
-// ===== 현재 사용자 로드 =====
 async function loadCurrentUser() {
-  if (!authToken) {
+  if (!authToken) { authModal.classList.remove('hidden'); return; }
+  const data = await api('/api/auth/me');
+  if (!data.ok) {
+    localStorage.removeItem('authToken');
+    authToken = null;
     authModal.classList.remove('hidden');
     return;
   }
-
-  try {
-    const res = await fetch('/api/auth/me', {
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    const data = await res.json();
-
-    if (!data.ok) {
-      localStorage.removeItem('authToken');
-      authToken = null;
-      authModal.classList.remove('hidden');
-      return;
-    }
-
-    currentUser = data.user;
-    userName.textContent = currentUser.display_name;
-    logoutBtn.classList.remove('hidden');
-    authModal.classList.add('hidden');
-    renderProfile();
-  } catch (err) {
-    authModal.classList.remove('hidden');
-  }
+  currentUser = data.user;
+  $('#userName').textContent = currentUser.display_name;
+  $('#logoutBtn').classList.remove('hidden');
+  authModal.classList.add('hidden');
+  renderProfile();
 }
 
-// ===== 로그아웃 =====
-logoutBtn.addEventListener('click', () => {
+$('#logoutBtn').addEventListener('click', () => {
   localStorage.removeItem('authToken');
   authToken = null;
   currentUser = null;
-  userName.textContent = '로그인 필요';
-  logoutBtn.classList.add('hidden');
+  $('#userName').textContent = '로그인 필요';
+  $('#logoutBtn').classList.add('hidden');
   authModal.classList.remove('hidden');
 });
 
-// ===== 프로필 렌더링 =====
-function renderProfile() {
+// ===== 프로필 =====
+async function renderProfile() {
   if (!currentUser) return;
-  const visibility = { public: '전체 공개', followers: '팔로워만', private: '비공개' };
+
+  const followData = await api('/api/follow/status');
+  const followingCount = followData.followingCount || 0;
+  const followersCount = followData.followersCount || 0;
+
+  const visibilityLabels = { public: '전체 공개', followers: '팔로워만', private: '비공개' };
+
   $('#profileContent').innerHTML = `
-    <div style="margin-bottom:16px;">
-      <strong>이름:</strong> ${currentUser.display_name}
-      ${currentUser.is_expert ? `<span style="color:var(--accent);"> ✓ ${currentUser.expert_type || '전문가'}</span>` : ''}
+    <div class="profile-header">
+      <div class="profile-name">
+        ${currentUser.display_name}
+        ${currentUser.is_expert ? `<span class="badge">${currentUser.expert_type || '전문가'}</span>` : ''}
+      </div>
+      <div class="profile-stats">
+        <span><strong>${followingCount}</strong> 팔로잉</span>
+        <span><strong>${followersCount}</strong> 팔로워</span>
+      </div>
     </div>
-    <div style="margin-bottom:16px;"><strong>이메일:</strong> ${currentUser.email}</div>
-    <div style="margin-bottom:16px;"><strong>대화 목적:</strong> ${currentUser.purpose_tag}</div>
-    <div style="margin-bottom:16px;"><strong>프로필 공개:</strong> ${visibility[currentUser.profile_visibility]}</div>
-    <div style="margin-bottom:16px;"><strong>소개:</strong> ${currentUser.bio || '(없음)'}</div>
+
+    <div class="profile-section">
+      <label>소개</label>
+      <textarea id="bioInput" placeholder="자기소개를 입력하세요">${currentUser.bio || ''}</textarea>
+    </div>
+
+    <div class="profile-section">
+      <label>프로필 공개범위</label>
+      <select id="visibilitySelect">
+        <option value="public" ${currentUser.profile_visibility === 'public' ? 'selected' : ''}>전체 공개</option>
+        <option value="followers" ${currentUser.profile_visibility === 'followers' ? 'selected' : ''}>팔로워만</option>
+        <option value="private" ${currentUser.profile_visibility === 'private' ? 'selected' : ''}>비공개</option>
+      </select>
+    </div>
+
+    <button id="saveProfileBtn" class="btn-primary">저장</button>
+    <p id="profileMsg" class="msg hidden"></p>
+
+    <hr style="margin:20px 0; border-color:var(--line);">
+
+    <div class="profile-section">
+      <label>이메일</label>
+      <p>${currentUser.email}</p>
+    </div>
+    <div class="profile-section">
+      <label>대화 목적</label>
+      <p>${currentUser.purpose_tag}</p>
+    </div>
   `;
+
+  $('#saveProfileBtn').addEventListener('click', saveProfile);
+}
+
+async function saveProfile() {
+  const bio = $('#bioInput').value;
+  const profileVisibility = $('#visibilitySelect').value;
+  const msg = $('#profileMsg');
+
+  const data = await api('/api/profile/update', {
+    method: 'POST',
+    body: JSON.stringify({ bio, profileVisibility })
+  });
+
+  msg.classList.remove('hidden');
+  if (data.ok) {
+    msg.textContent = '저장되었습니다';
+    msg.style.color = 'var(--accent)';
+    currentUser.bio = bio;
+    currentUser.profile_visibility = profileVisibility;
+  } else {
+    msg.textContent = data.error;
+    msg.style.color = 'var(--danger)';
+  }
+  setTimeout(() => msg.classList.add('hidden'), 2000);
+}
+
+// ===== 검색 (사용자 목록) =====
+async function loadSearchUsers(query = '') {
+  const data = await api(`/api/users/search?q=${encodeURIComponent(query)}`);
+  const container = $('#searchResults');
+
+  if (!data.ok || !data.users?.length) {
+    container.innerHTML = '<p class="muted">검색 결과가 없습니다</p>';
+    return;
+  }
+
+  container.innerHTML = data.users.map(u => `
+    <div class="user-card">
+      <div class="user-info">
+        <span class="user-name">${u.display_name}</span>
+        ${u.is_expert ? `<span class="badge">${u.expert_type || '전문가'}</span>` : ''}
+        <span class="user-purpose">${u.purpose_tag}</span>
+      </div>
+      <button class="btn-follow ${u.isFollowing ? 'following' : ''}" data-user-id="${u.id}">
+        ${u.isFollowing ? '팔로잉' : '팔로우'}
+      </button>
+    </div>
+  `).join('');
+
+  // 팔로우 버튼 이벤트
+  container.querySelectorAll('.btn-follow').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const userId = btn.dataset.userId;
+      const data = await api('/api/follow/toggle', {
+        method: 'POST',
+        body: JSON.stringify({ targetUserId: userId })
+      });
+      if (data.ok) {
+        btn.textContent = data.action === 'followed' ? '팔로잉' : '팔로우';
+        btn.classList.toggle('following', data.action === 'followed');
+      }
+    });
+  });
 }
 
 // ===== 탭 이벤트 =====
-document.querySelectorAll('.tab').forEach(btn => {
+$$('.tab').forEach(btn => {
   btn.addEventListener('click', () => showPage(btn.dataset.tab));
 });
 
