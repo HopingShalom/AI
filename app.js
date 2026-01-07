@@ -215,6 +215,36 @@ $('#backToListBtn').addEventListener('click', () => {
 $('#sendBtn').addEventListener('click', sendMessage);
 $('#chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
+// "공유" 버튼: 현재 대화를 posts에 ai_share로 저장
+$('#shareChatBtn')?.addEventListener('click', async () => {
+  if (!currentConversationId) {
+    alert('먼저 대화를 선택하거나 새 대화를 시작한 뒤 공유할 수 있습니다.');
+    return;
+  }
+
+  try {
+    // 기본값은 'public'으로 공유 (나중에 모달로 선택하게 확장 가능)
+    const data = await api('/api/posts/share-ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversationId: currentConversationId,
+        visibility: 'public'
+      })
+    });
+
+    if (!data.ok) {
+      alert('공유 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
+      return;
+    }
+
+    alert(data.message || '피드에 공유되었습니다.');
+    // 나중에 feed 탭으로 자동 이동하고 싶다면 아래 주석을 해제
+    // showPage('feed');
+  } catch (e) {
+    alert('네트워크 오류로 공유에 실패했습니다.');
+  }
+});
+
 async function sendMessage() {
   const input = $('#chatInput');
   const message = input.value.trim();
