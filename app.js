@@ -99,9 +99,9 @@ async function loadFeed() {
   }
 
   container.innerHTML = data.feed.map(item => `
-    <div class="feed-item" data-conv-id="${item.id}">
+    <div class="feed-item" data-conv-id="${item.id}" data-user-id="${item.user.id}">
       <div class="feed-item-header">
-        <span class="feed-user-name">${item.user.displayName}</span>
+        <span class="feed-user-name clickable" data-user-id="${item.user.id}">${item.user.displayName}</span>
         ${item.user.isExpert ? `<span class="badge">${item.user.expertType || '전문가'}</span>` : ''}
         <span class="feed-user-tag">${item.user.purposeTag}</span>
       </div>
@@ -110,6 +110,38 @@ async function loadFeed() {
       <div class="feed-meta">${new Date(item.createdAt).toLocaleDateString('ko-KR')}</div>
     </div>
   `).join('');
+
+  // 피드 아이템 클릭 → 대화 보기
+  container.querySelectorAll('.feed-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      // 사용자 이름 클릭은 별도 처리
+      if (e.target.classList.contains('feed-user-name')) return;
+      
+      const convId = item.dataset.convId;
+      showPage('chat');
+      openConversation(convId);
+    });
+  });
+
+  // 사용자 이름 클릭 → 프로필 보기 (모달)
+  container.querySelectorAll('.feed-user-name.clickable').forEach(el => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const userId = el.dataset.userId;
+      await showUserProfile(userId);
+    });
+  });
+}
+
+// 다른 사용자 프로필 보기 (간단 모달)
+async function showUserProfile(userId) {
+  const data = await api(`/api/users/profile?userId=${userId}`);
+  if (!data.ok) {
+    alert('프로필을 불러올 수 없습니다.');
+    return;
+  }
+  const u = data.user;
+  alert(`👤 ${u.display_name}\n📌 ${u.purpose_tag}\n${u.is_expert ? '✓ ' + (u.expert_type || '전문가') : ''}\n\n${u.bio || '(소개 없음)'}`);
 }
 
 // ===== Chat =====
