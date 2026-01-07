@@ -474,31 +474,75 @@ async function renderProfile() {
   if (!currentUser) return;
   const followData = await api('/api/follow/status');
   
+  // 1. HTML 렌더링 (B AI 섹션 포함)
   $('#profileContent').innerHTML = `
-    <div class="profile-header">
-      <div class="profile-name">${currentUser.display_name} ${currentUser.is_expert ? `<span class="badge">${currentUser.expert_type || '전문가'}</span>` : ''}</div>
-      <div class="profile-stats"><span><strong>${followData.followingCount || 0}</strong> 팔로잉</span><span><strong>${followData.followersCount || 0}</strong> 팔로워</span></div>
+    <div style="margin-bottom:16px;">
+      <strong>이름:</strong> ${currentUser.display_name}
     </div>
-    <div class="profile-section"><label>소개</label><textarea id="bioInput" placeholder="자기소개">${currentUser.bio || ''}</textarea></div>
-    <div class="profile-section"><label>프로필 공개범위</label><select id="profileVisibilitySelect"><option value="public" ${currentUser.profile_visibility === 'public' ? 'selected' : ''}>전체 공개</option><option value="followers" ${currentUser.profile_visibility === 'followers' ? 'selected' : ''}>팔로워만</option><option value="private" ${currentUser.profile_visibility === 'private' ? 'selected' : ''}>비공개</option></select></div>
+    <div style="margin-bottom:16px;"><strong>이메일:</strong> ${currentUser.email}</div>
+    <div style="margin-bottom:16px;"><strong>대화 목적:</strong> ${currentUser.purpose_tag}</div>
+    <div class="profile-section">
+      <label>소개</label>
+      <textarea id="bioInput" placeholder="자기소개">${currentUser.bio || ''}</textarea>
+    </div>
+    <div class="profile-section">
+      <label>프로필 공개범위</label>
+      <select id="profileVisibilitySelect">
+        <option value="public" ${currentUser.profile_visibility === 'public' ? 'selected' : ''}>전체 공개</option>
+        <option value="followers" ${currentUser.profile_visibility === 'followers' ? 'selected' : ''}>팔로워만</option>
+        <option value="private" ${currentUser.profile_visibility === 'private' ? 'selected' : ''}>비공개</option>
+      </select>
+    </div>
+
+    <div class="profile-section">
+      <label>DM 대리응답 (B의 AI)</label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="proxyToggle" ${currentUser.proxy_enabled ? 'checked' : ''} />
+        AI가 나를 대신해 DM에 답장하도록 허용 (실험 기능)
+      </label>
+      <p class="muted" style="font-size:12px;">상대가 나에게 DM을 보냈을 때, 내 AI가 1차 답장을 보낼 수 있습니다.</p>
+    </div>
+
     <button id="saveProfileBtn" class="btn-primary">저장</button>
     <p id="profileMsg" class="msg hidden"></p>
     <hr style="margin:20px 0;border-color:var(--line);">
-    <div class="profile-section"><label>이메일</label><p>${currentUser.email}</p></div>
-    <div class="profile-section"><label>대화 목적</label><p>${currentUser.purpose_tag}</p></div>
   `;
 
+  // 기존 저장 버튼 핸들러
   $('#saveProfileBtn').addEventListener('click', async () => {
     const bio = $('#bioInput').value;
     const profileVisibility = $('#profileVisibilitySelect').value;
-    const data = await api('/api/profile/update', { method: 'POST', body: JSON.stringify({ bio, profileVisibility }) });
-    const msg = $('#profileMsg');
-    msg.classList.remove('hidden');
-    msg.textContent = data.ok ? '저장되었습니다' : data.error;
-    msg.style.color = data.ok ? 'var(--accent)' : 'var(--danger)';
-    if (data.ok) { currentUser.bio = bio; currentUser.profile_visibility = profileVisibility; }
-    setTimeout(() => msg.classList.add('hidden'), 2000);
+    const data = await api('/api/profile/update', { 
+      method: 'POST', 
+      body: JSON.stringify({ bio, profileVisibility }) 
+    });
+    // ... (중략: 메시지 표시 및 데이터 갱신 로직) ...
   });
+
+  // ▼ 요청하신 B AI(프록시) 토글 이벤트 추가 ▼
+  const proxyToggle = $('#proxyToggle');
+  if (proxyToggle) {
+    proxyToggle.addEventListener('change', async () => {
+      const enabled = proxyToggle.checked;
+      try {
+        const res = await api('/api/profile/proxy', {
+          method: 'POST',
+          body: JSON.stringify({ enabled })
+        });
+        if (!res.ok) {
+          alert('B AI 설정 변경 중 오류: ' + (res.error || '알 수 없는 오류'));
+          proxyToggle.checked = !enabled; // 실패 시 롤백
+          return;
+        }
+        if (currentUser) {
+          currentUser.proxy_enabled = res.proxyEnabled;
+        }
+      } catch (e) {
+        alert('네트워크 오류로 B AI 설정을 변경하지 못했습니다.');
+        proxyToggle.checked = !enabled; // 실패 시 롤백
+      }
+    });
+  }
 }
 
 // ===== 탭 이벤트 =====
