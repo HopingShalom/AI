@@ -31,7 +31,10 @@ function showPage(tab) {
     loadConversations();  // My AI 대화 목록
     loadDmList();         // DM 대화 목록
   }
-  if (tab === 'search') loadSearchUsers();
+  if (tab === 'search') {
+    loadSearchUsers();
+    loadCommunities();
+  }
   if (tab === 'profile') renderProfile();
 }
 
@@ -429,6 +432,96 @@ async function loadSearchUsers(query = '') {
 }
 $('#searchInput')?.addEventListener('input', (e) => loadSearchUsers(e.target.value));
 
+// ===== 커뮤니티 목록 불러오기 =====
+async function loadCommunities() {
+  const container = $('#communityList');
+  if (!container) return;
+
+  container.innerHTML = '<p class="muted">커뮤니티를 불러오는 중입니다...</p>';
+
+  try {
+    const data = await api('/api/communities/list');
+    if (!data.ok) {
+      container.innerHTML = `<p class="muted">커뮤니티를 불러올 수 없습니다: ${data.error || ''}</p>`;
+      return;
+    }
+
+    const communities = data.communities || [];
+    if (!communities.length) {
+      container.innerHTML = '<p class="muted">아직 커뮤니티가 없습니다. 위에서 새 커뮤니티를 만들어 보세요.</p>';
+      return;
+    }
+
+    container.innerHTML = communities.map(c => {
+      const memberLabel = c.isMember
+        ? (c.memberRole === 'owner' ? '소유자' :
+           c.memberRole === 'admin' ? '관리자' :
+           '멤버')
+        : (c.isPending ? '승인 대기 중' : (c.isPrivate ? '비공개' : '공개'));
+
+      let btnLabel = '';
+      let btnClass = 'btn-join';
+      let btnDisabled = false;
+
+      if (c.isMember) {
+        btnLabel = '참여 중';
+        btnClass += ' joined';
+        btnDisabled = true;
+      } else if (c.isPending) {
+        btnLabel = '승인 대기';
+        btnClass += ' pending';
+        btnDisabled = true;
+      } else {
+        btnLabel = '가입';
+      }
+
+      return `
+        <div class="community-card" data-community-id="${c.id}">
+          <div class="community-info">
+            <div class="community-name">${c.name}</div>
+            <div class="community-desc">${c.description || ''}</div>
+            <div class="community-meta">
+              ${c.isPrivate ? '비공개 / 승인제' : '공개 커뮤니티'} · ${memberLabel}
+            </div>
+          </div>
+          <div>
+            <button class="${btnClass}" data-community-id="${c.id}" ${btnDisabled ? 'disabled' : ''}>
+              ${btnLabel}
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 가입 버튼 이벤트
+    container.querySelectorAll('.btn-join').forEach(btn => {
+      const disabled = btn.hasAttribute('disabled');
+      if (disabled) return;
+
+      btn.addEventListener('click', async () => {
+        const commId = btn.dataset.communityId;
+        try {
+          const res = await api('/api/communities/join', {
+            method: 'POST',
+            body: JSON.stringify({ communityId: commId })
+          });
+          if (!res.ok) {
+            alert('가입 중 오류가 발생했습니다: ' + (res.error || '알 수 없는 오류'));
+            return;
+          }
+          // 다시 목록을 불러와 상태 반영
+          await loadCommunities();
+        } catch (e) {
+          alert('네트워크 오류로 가입 요청을 처리하지 못했습니다.');
+        }
+      });
+    });
+
+  } catch (e) {
+    container.innerHTML = '<p class="muted">커뮤니티를 불러오는 중 네트워크 오류가 발생했습니다.</p>';
+  }
+}
+
 // ===== Profile =====
 async function renderProfile() {
   if (!currentUser) return;
@@ -522,5 +615,60 @@ $('#dmSendBtn')?.addEventListener('click', sendDmMessage);
 $('#dmInput')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendDmMessage(); });
 $('#dmBackBtn')?.addEventListener('click', closeDmView);
 $('#loadDmBtn')?.addEventListener('click', loadDmList);
+
+// 커뮤니티 생성 버튼
+$('#communityCreateBtn')?.addEventListener('click', async () => {
+  const nameInput = $('#communityNameInput');
+  const descInput = $('#communityDescInput');
+  const privateInput = $('#communityPrivateInput');
+  const msgEl = $('#communityCreateMsg');
+
+  if (!nameInput || !descInput || !privateInput || !msgEl) return;
+
+  const name = nameInput.value.trim();
+  const desc = descInput.value.trim();
+  const isPrivate = privateInput.checked;
+
+  msgEl.classList.remove('hidden');
+  msgEl.style.color = 'var(--danger)';
+
+  if (!name) {
+    msgEl.textContent = '커뮤니티 이름을 입력해주세요.';
+    return;
+  }
+
+  try {
+    const res = await api('/api/communities/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        description: desc,
+        isPrivate
+      })
+    });
+
+    if (!res.ok) {
+      msgEl.textContent = res.error || '커뮤니티 생성 중 오류가 발생했습니다.';
+      return;
+    }
+
+    msgEl.style.color = 'var(--accent)';
+    msgEl.textContent = '커뮤니티가 생성되었습니다.';
+
+    // 입력값 초기화
+    nameInput.value = '';
+    descInput.value = '';
+    privateInput.checked = false;
+
+    // 목록 갱신
+    await loadCommunities();
+  } catch (e) {
+    msgEl.textContent = '네트워크 오류로 커뮤니티를 생성하지 못했습니다.';
+  } finally {
+    setTimeout(() => {
+      msgEl.classList.add('hidden');
+    }, 2000);
+  }
+});
 
 loadCurrentUser();
