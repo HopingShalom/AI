@@ -12,6 +12,16 @@ let currentCommunityName = null;
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+function showCrisisBanner() {
+  const banner = $('#crisisBanner');
+  if (!banner) return;
+  banner.classList.remove('hidden');
+}
+
+$('#crisisBannerClose')?.addEventListener('click', () => {
+  $('#crisisBanner')?.classList.add('hidden');
+});
+
 // ===== API 헬퍼 =====
 async function api(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
@@ -232,12 +242,35 @@ async function sendMessage() {
   container.innerHTML += `<div class="message user">${message}</div>`;
   container.innerHTML += `<div class="message assistant" id="typing">입력 중...</div>`;
   container.scrollTop = container.scrollHeight;
-  const data = await api('/api/ai/chat', { method: 'POST', body: JSON.stringify({ conversationId: currentConversationId, message }) });
+const data = await api('/api/dm/send', {
+  method: 'POST',
+  body: JSON.stringify({
+    conversationId: currentDmConversationId,
+    content: text
+  })
+});
+
+if (!data.ok) {
+  // ... 에러 처리 ...
+  return;
+}
+
+// 위기 감지 플래그가 있으면 도움 배너 표시
+if (data.crisisAlert) {
+  showCrisisBanner();
+}
+
+// 이후 /api/dm/messages 재호출 및 렌더링
+const reload = await api(`/api/dm/messages?conversationId=${encodeURIComponent(currentDmConversationId)}`);
+ 
   $('#typing')?.remove();
   if (data.ok) {
     currentConversationId = data.conversationId;
     container.innerHTML += `<div class="message assistant">${data.aiMessage.content}</div>`;
     container.scrollTop = container.scrollHeight;
+    if (data.crisisAlert) {
+  showCrisisBanner();
+}
   } else {
     container.innerHTML += `<div class="message assistant" style="color:var(--danger);">오류: ${data.error}</div>`;
   }
