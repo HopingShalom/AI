@@ -2,7 +2,9 @@
 let currentUser = null;
 let authToken = localStorage.getItem('authToken');
 let isRegisterMode = false;
-let currentConversationId = null;
+let currentConversationId = null; // My AI 대화용
+let currentDmConversationId = null; // DM 대화용 (추가)
+let currentDmOtherUser = null; // { id, displayName, ... }
 
 // ===== DOM 헬퍼 =====
 const $ = (sel) => document.querySelector(sel);
@@ -24,7 +26,11 @@ function showPage(tab) {
   $(`.tab[data-tab="${tab}"]`)?.classList.add('active');
 
   if (tab === 'feed') loadFeed();
-  if (tab === 'chat') { showChatList(); loadConversations(); }
+  if (tab === 'chat') {
+    showChatList();
+    loadConversations();  // My AI 대화 목록
+    loadDmList();         // DM 대화 목록
+  }
   if (tab === 'search') loadSearchUsers();
   if (tab === 'profile') renderProfile();
 }
@@ -111,19 +117,15 @@ async function loadFeed() {
     </div>
   `).join('');
 
-  // 피드 아이템 클릭 → 대화 보기
   container.querySelectorAll('.feed-item').forEach(item => {
     item.addEventListener('click', (e) => {
-      // 사용자 이름 클릭은 별도 처리
       if (e.target.classList.contains('feed-user-name')) return;
-      
       const convId = item.dataset.convId;
       showPage('chat');
       openConversation(convId);
     });
   });
 
-  // 사용자 이름 클릭 → 프로필 보기 (모달)
   container.querySelectorAll('.feed-user-name.clickable').forEach(el => {
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -133,7 +135,6 @@ async function loadFeed() {
   });
 }
 
-// 다른 사용자 프로필 보기 (간단 모달)
 async function showUserProfile(userId) {
   const data = await api(`/api/users/profile?userId=${userId}`);
   if (!data.ok) {
@@ -144,7 +145,7 @@ async function showUserProfile(userId) {
   alert(`👤 ${u.display_name}\n📌 ${u.purpose_tag}\n${u.is_expert ? '✓ ' + (u.expert_type || '전문가') : ''}\n\n${u.bio || '(소개 없음)'}`);
 }
 
-// ===== Chat =====
+// ===== Chat (My AI) =====
 function showChatList() {
   $('#chatList').classList.remove('hidden');
   $('#chatView').classList.add('hidden');
@@ -215,7 +216,6 @@ $('#backToListBtn').addEventListener('click', () => {
 $('#sendBtn').addEventListener('click', sendMessage);
 $('#chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-// "공유" 버튼: 현재 대화를 posts에 ai_share로 저장
 $('#shareChatBtn')?.addEventListener('click', async () => {
   if (!currentConversationId) {
     alert('먼저 대화를 선택하거나 새 대화를 시작한 뒤 공유할 수 있습니다.');
@@ -223,7 +223,6 @@ $('#shareChatBtn')?.addEventListener('click', async () => {
   }
 
   try {
-    // 기본값은 'public'으로 공유 (나중에 모달로 선택하게 확장 가능)
     const data = await api('/api/posts/share-ai', {
       method: 'POST',
       body: JSON.stringify({
@@ -238,8 +237,6 @@ $('#shareChatBtn')?.addEventListener('click', async () => {
     }
 
     alert(data.message || '피드에 공유되었습니다.');
-    // 나중에 feed 탭으로 자동 이동하고 싶다면 아래 주석을 해제
-    // showPage('feed');
   } catch (e) {
     alert('네트워크 오류로 공유에 실패했습니다.');
   }
@@ -253,7 +250,6 @@ async function sendMessage() {
   input.value = '';
   const container = $('#messagesContainer');
 
-  // 사용자 메시지 즉시 표시
   if (container.querySelector('.muted')) container.innerHTML = '';
   container.innerHTML += `<div class="message user">${message}</div>`;
   container.innerHTML += `<div class="message assistant" id="typing">입력 중...</div>`;
@@ -275,7 +271,6 @@ async function sendMessage() {
   }
 }
 
-// 공개범위 설정
 $('#chatSettingsBtn').addEventListener('click', () => {
   if (!currentConversationId) { alert('대화를 먼저 선택하세요.'); return; }
   $('#visibilityModal').classList.remove('hidden');
@@ -298,6 +293,154 @@ $('#saveVisibilityBtn').addEventListener('click', async () => {
     alert('오류: ' + data.error);
   }
 });
+
+// ===== DM 관련 함수 (새로 추가된 섹션) =====
+
+// DM 리스트 불러오기
+async function loadDmList() {
+  const listEl = $('#dmList');
+  if (!listEl) return;
+  try {
+    const data = await api('/api/dm/list');
+    if (!data.ok) {
+      listEl.innerHTML = `<p class="muted">DM 목록을 불러올 수 없습니다: ${data.error || ''}</p>`;
+      return;
+    }
+    const convs = data.conversations || [];
+    if (!convs.length) {
+      listEl.innerHTML = '<p class="muted">DM 대화가 없습니다. 다른 사용자 프로필에서 DM을 시작해보세요.</p>';
+      return;
+    }
+    listEl.innerHTML = convs.map(c => {
+      const last = c.lastMessage;
+      const lastPreview = last ? (last.content.length > 40 ? last.content.slice(0, 40) + '…' : last.content) : '(메시지 없음)';
+      const updated = c.updatedAt ? new Date(c.updatedAt).toLocaleString('ko-KR') : '';
+      return `
+        <div class="user-card dm-item" data-dm-id="${c.id}" data-other-name="${c.otherUser.displayName}">
+          <div>
+            <div class="user-name">${c.otherUser.displayName}${c.otherUser.isExpert ? `<span class="badge">${c.otherUser.expertType || '전문가'}</span>` : ''}</div>
+            <div class="user-purpose">${c.otherUser.purposeTag || ''}</div>
+            <div class="muted" style="font-size:12px;margin-top:4px;">${lastPreview}</div>
+          </div>
+          <div class="muted" style="font-size:11px;">${updated}</div>
+        </div>
+      `;
+    }).join('');
+    
+    // 클릭 이벤트: DM 방 열기
+    listEl.querySelectorAll('.dm-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const dmId = item.dataset.dmId;
+        const name = item.dataset.otherName;
+        openDmConversation(dmId, { displayName: name });
+      });
+    });
+  } catch (e) {
+    listEl.innerHTML = '<p class="muted">DM 목록을 불러오는 중 네트워크 오류가 발생했습니다.</p>';
+  }
+}
+
+// 특정 DM 대화 열기
+async function openDmConversation(dmId, otherUser) {
+  currentDmConversationId = dmId;
+  currentDmOtherUser = otherUser || null;
+  const dmView = $('#dmView');
+  const dmList = $('#dmList');
+  const dmTitle = $('#dmTitle');
+  const dmMessages = $('#dmMessages');
+  
+  if (!dmView || !dmList || !dmMessages) return;
+  
+  dmList.classList.add('hidden');
+  dmView.classList.remove('hidden');
+  dmTitle.textContent = otherUser ? otherUser.displayName : 'DM';
+  dmMessages.innerHTML = '<p class="muted">불러오는 중...</p>';
+  
+  try {
+    const data = await api(`/api/dm/messages?conversationId=${encodeURIComponent(dmId)}`);
+    if (!data.ok) {
+      dmMessages.innerHTML = `<p class="muted">메시지를 불러올 수 없습니다: ${data.error || ''}</p>`;
+      return;
+    }
+    renderDmMessages(data.messages || []);
+  } catch (e) {
+    dmMessages.innerHTML = '<p class="muted">네트워크 오류로 메시지를 불러오지 못했습니다.</p>';
+  }
+}
+
+// DM 메시지 리스트 렌더링
+function renderDmMessages(messages) {
+  const dmMessages = $('#dmMessages');
+  if (!dmMessages) return;
+  if (!messages.length) {
+    dmMessages.innerHTML = '<p class="muted">아직 메시지가 없습니다. 첫 메시지를 보내보세요.</p>';
+    return;
+  }
+  dmMessages.innerHTML = messages.map(m => {
+    const mine = currentUser && m.sender_id === currentUser.id;
+    const cls = mine ? 'message user' : 'message assistant';
+    const label = m.sender_type === 'proxy_ai' ? '(AI)' : '';
+    return `
+      <div class="${cls}">
+        ${label ? `<span style="font-size:11px;opacity:0.8;">${label}</span><br/>` : ''}
+        ${m.content.replace(/\n/g, '<br/>')}
+      </div>
+    `;
+  }).join('');
+  dmMessages.scrollTop = dmMessages.scrollHeight;
+}
+
+// DM 메시지 전송
+async function sendDmMessage() {
+  if (!currentDmConversationId) {
+    alert('먼저 DM 대화를 선택하세요.');
+    return;
+  }
+  const input = $('#dmInput');
+  const dmMessages = $('#dmMessages');
+  if (!input || !dmMessages) return;
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  
+  // 낙관적 렌더링
+  if (dmMessages.querySelector('.muted')) dmMessages.innerHTML = '';
+  dmMessages.innerHTML += `<div class="message user">${text.replace(/\n/g, '<br/>')}</div>`;
+  dmMessages.scrollTop = dmMessages.scrollHeight;
+  
+  try {
+    const data = await api('/api/dm/send', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversationId: currentDmConversationId,
+        content: text
+      })
+    });
+    if (!data.ok) {
+      dmMessages.innerHTML += `<div class="message assistant" style="color:var(--danger);">오류: ${data.error || ''}</div>`;
+      return;
+    }
+  } catch (e) {
+    dmMessages.innerHTML += `<div class="message assistant" style="color:var(--danger);">네트워크 오류</div>`;
+  }
+}
+
+// DM 뷰 닫기
+function closeDmView() {
+  currentDmConversationId = null;
+  const dmView = $('#dmView');
+  const dmList = $('#dmList');
+  if (!dmView || !dmList) return;
+  dmView.classList.add('hidden');
+  dmList.classList.remove('hidden');
+  $('#dmMessages').innerHTML = '<p class="muted">대화를 선택하세요.</p>';
+}
+
+// DM 이벤트 리스너 추가 (필요 시)
+$('#dmSendBtn')?.addEventListener('click', sendDmMessage);
+$('#dmInput')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendDmMessage(); });
+$('#dmBackBtn')?.addEventListener('click', closeDmView);
+
 
 // ===== Search =====
 async function loadSearchUsers(query = '') {
@@ -330,8 +473,7 @@ $('#searchInput')?.addEventListener('input', (e) => loadSearchUsers(e.target.val
 async function renderProfile() {
   if (!currentUser) return;
   const followData = await api('/api/follow/status');
-  const visibilityLabels = { public: '전체 공개', followers: '팔로워만', private: '비공개' };
-
+  
   $('#profileContent').innerHTML = `
     <div class="profile-header">
       <div class="profile-name">${currentUser.display_name} ${currentUser.is_expert ? `<span class="badge">${currentUser.expert_type || '전문가'}</span>` : ''}</div>
@@ -361,6 +503,26 @@ async function renderProfile() {
 
 // ===== 탭 이벤트 =====
 $$('.tab').forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.tab)));
+
+// ===== DM 버튼 이벤트 =====
+$('#loadDmBtn')?.addEventListener('click', () => {
+  loadDmList();
+});
+
+$('#dmBackBtn')?.addEventListener('click', () => {
+  closeDmView();
+});
+
+$('#dmSendBtn')?.addEventListener('click', () => {
+  sendDmMessage();
+});
+
+$('#dmInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendDmMessage();
+  }
+});
 
 // ===== 초기화 =====
 loadCurrentUser();
