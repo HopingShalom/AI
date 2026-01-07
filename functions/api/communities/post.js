@@ -105,6 +105,13 @@ export async function onRequestPost(context) {
       .bind(postId, me, content, communityId)
       .run();
 
+        // 위기 키워드가 있으면 moderation_flag='crisis'로 표시
+    if (hasCrisisKeyword(content)) {
+      await context.env.DB.prepare(
+        "UPDATE posts SET moderation_flag = 'crisis' WHERE id = ?"
+      ).bind(postId).run();
+    }
+
     return Response.json({
       ok: true,
       post: {
