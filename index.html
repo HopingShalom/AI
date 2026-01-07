@@ -34,6 +34,40 @@
     </div>
   </header>
 
+  <!-- 위기 상황 도움 배너 (필요할 때만 표시) -->
+  <div id="crisisBanner" class="hidden" style="
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 80px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: #1f2937;
+    border: 1px solid rgba(248, 113, 113, 0.7);
+    color: #fee2e2;
+    font-size: 13px;
+    z-index: 999;
+  ">
+    <div style="font-weight:600;margin-bottom:4px;">위기 상황이 감지되었습니다</div>
+    <div style="margin-bottom:6px;">
+      이 서비스는 응급 상황을 직접 해결할 수 없습니다. 생명이나 안전이 위협받는 상황이라면,
+      가능한 한 빨리 지역의 응급 번호(119, 112 등)나 가까운 응급실, 정신건강 상담전화에 연락하세요.
+    </div>
+    <div style="margin-bottom:4px;">
+      프로필에서 <strong>전문가 배지(✓ 전문가)</strong>가 표시된 사용자에게 상담을 요청할 수도 있습니다.
+    </div>
+    <button id="crisisBannerClose" style="
+      margin-top:4px;
+      padding:4px 10px;
+      border-radius:8px;
+      border:1px solid rgba(248, 113, 113, 0.7);
+      background: transparent;
+      color:#fecaca;
+      font-size:12px;
+      cursor:pointer;
+    ">닫기</button>
+  </div>
+  
   <main class="screen">
     <!-- Feed -->
     <section class="page" id="page-feed" data-page="feed">
