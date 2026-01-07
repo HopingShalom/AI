@@ -3,34 +3,60 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>A Demo (Stage 1)</title>
+  <title>A Demo</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
+  <!-- 로그인/회원가입 모달 -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal">
+      <h2 id="authTitle">로그인</h2>
+      <form id="authForm">
+        <input type="email" id="authEmail" placeholder="이메일" required />
+        <input type="password" id="authPassword" placeholder="비밀번호" required />
+        <div id="registerFields" class="hidden">
+          <input type="text" id="authName" placeholder="표시 이름" />
+          <input type="text" id="authPurpose" placeholder="대화 목적 태그 (예: 자기개발, 친구)" />
+          <label class="checkbox-label">
+            <input type="checkbox" id="authAge" /> 만 15세 이상입니다
+          </label>
+        </div>
+        <button type="submit" id="authSubmit">로그인</button>
+        <p class="auth-switch">
+          <span id="authSwitchText">계정이 없으신가요?</span>
+          <a href="#" id="authSwitchLink">회원가입</a>
+        </p>
+        <p class="error hidden" id="authError"></p>
+      </form>
+    </div>
+  </div>
+
   <header class="topbar">
     <div class="brand">A</div>
-    <div class="status" id="status">Health: 확인 중…</div>
+    <div class="user-info">
+      <span id="userName">로그인 필요</span>
+      <button id="logoutBtn" class="hidden">로그아웃</button>
+    </div>
   </header>
 
   <main class="screen">
     <section class="page" id="page-feed" data-page="feed">
       <h1>Feed</h1>
-      <p>커뮤니티 글 / 공개 My AI 대화 / 사용자 게시물이 여기에 섞여서 나옵니다. (Stage 3에서 구현)</p>
+      <p>커뮤니티 글 / 공개 My AI 대화가 여기에 표시됩니다.</p>
     </section>
-
     <section class="page hidden" id="page-chat" data-page="chat">
       <h1>Chat</h1>
-      <p>My AI / 1:1 / 그룹·커뮤니티 목록 UI가 여기에 들어갑니다. (Stage 4~5에서 구현)</p>
+      <p>My AI 및 1:1 채팅 (Stage 3-4에서 구현)</p>
     </section>
-
     <section class="page hidden" id="page-search" data-page="search">
       <h1>Search</h1>
-      <p>유저/콘텐츠/그룹/커뮤니티 검색 UI (Stage 2~5에서 구현)</p>
+      <p>유저/콘텐츠/그룹 검색</p>
     </section>
-
     <section class="page hidden" id="page-profile" data-page="profile">
       <h1>Profile</h1>
-      <p>프로필/공개범위/데이터 체크박스/리셋 (Stage 2, 6에서 구현)</p>
+      <div id="profileContent">
+        <p>로그인하면 프로필이 표시됩니다.</p>
+      </div>
     </section>
   </main>
 
