@@ -5,6 +5,8 @@ let isRegisterMode = false;
 let currentConversationId = null; // My AI 대화용
 let currentDmConversationId = null; // DM 대화용
 let currentDmOtherUser = null; // { id, displayName, ... }
+let currentCommunityId = null;
+let currentCommunityName = null;
 
 // ===== DOM 헬퍼 =====
 const $ = (sel) => document.querySelector(sel);
@@ -498,7 +500,8 @@ async function loadCommunities() {
       const disabled = btn.hasAttribute('disabled');
       if (disabled) return;
 
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation(); // 카드 클릭과 구분
         const commId = btn.dataset.communityId;
         try {
           const res = await api('/api/communities/join', {
@@ -509,16 +512,169 @@ async function loadCommunities() {
             alert('가입 중 오류가 발생했습니다: ' + (res.error || '알 수 없는 오류'));
             return;
           }
-          // 다시 목록을 불러와 상태 반영
           await loadCommunities();
-        } catch (e) {
+        } catch (e2) {
           alert('네트워크 오류로 가입 요청을 처리하지 못했습니다.');
         }
       });
     });
 
+    // 커뮤니티 카드 클릭 → 해당 커뮤니티 글 열기
+    container.querySelectorAll('.community-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const commId = card.dataset.communityId;
+        const nameEl = card.querySelector('.community-name');
+        const name = nameEl ? nameEl.textContent.trim() : '커뮤니티';
+        openCommunityPosts(commId, name);
+      });
+    });
+
   } catch (e) {
     container.innerHTML = '<p class="muted">커뮤니티를 불러오는 중 네트워크 오류가 발생했습니다.</p>';
+  }
+}
+
+// 커뮤니티 글 열기
+async function openCommunityPosts(communityId, communityName) {
+  const section = $('#communityPosts');
+  const titleEl = $('#communityPostsTitle');
+  const descEl = $('#communityPostsDesc');
+  const listEl = $('#communityPostsList');
+  const msgEl = $('#communityPostMsg');
+  const inputEl = $('#communityPostInput');
+  const formEl = $('#communityPostForm');
+
+  if (!section || !listEl) return;
+
+  currentCommunityId = communityId;
+  currentCommunityName = communityName;
+
+  section.classList.remove('hidden');
+  if (titleEl) titleEl.textContent = `커뮤니티: ${communityName}`;
+  if (descEl) descEl.textContent = '';
+  listEl.innerHTML = '<p class="muted">글을 불러오는 중입니다...</p>';
+  if (msgEl) { msgEl.classList.add('hidden'); msgEl.textContent = ''; }
+  if (inputEl) inputEl.value = '';
+
+  try {
+    const data = await api(`/api/communities/posts?communityId=${encodeURIComponent(communityId)}`);
+    if (!data.ok) {
+      listEl.innerHTML = `<p class="muted">글을 불러올 수 없습니다: ${data.error || ''}</p>`;
+      if (formEl) formEl.classList.add('hidden');
+      return;
+    }
+    renderCommunityPosts(data);
+  } catch (e) {
+    listEl.innerHTML = '<p class="muted">네트워크 오류로 글을 불러오지 못했습니다.</p>';
+    if (formEl) formEl.classList.add('hidden');
+  }
+}
+
+// 커뮤니티 글 렌더링
+function renderCommunityPosts(data) {
+  const section = $('#communityPosts');
+  const listEl = $('#communityPostsList');
+  const descEl = $('#communityPostsDesc');
+  const formEl = $('#communityPostForm');
+
+  if (!section || !listEl) return;
+
+  const comm = data.community || {};
+  const posts = data.posts || [];
+  const isMember = !!data.isMember;
+
+  if (descEl) {
+    descEl.textContent = comm.description || '';
+  }
+
+  if (!posts.length) {
+    listEl.innerHTML = isMember
+      ? '<p class="muted">아직 글이 없습니다. 첫 번째 글을 남겨보세요.</p>'
+      : '<p class="muted">아직 글이 없습니다. 멤버가 되면 글을 볼 수 있습니다.</p>';
+  } else {
+    listEl.innerHTML = posts.map(p => {
+      const meta = `${new Date(p.createdAt).toLocaleString('ko-KR')} · ${p.author.displayName}`;
+      const flag =
+        p.moderationFlag === 'violation' ? ' (규칙 위반됨)' :
+        p.moderationFlag === 'review' ? ' (검토 필요)' : '';
+      return `
+        <div class="user-card">
+          <div class="user-info">
+            <span class="user-name">${p.author.displayName}</span>
+            ${p.author.isExpert ? `<span class="badge">${p.author.expertType || '전문가'}</span>` : ''}
+            <span class="user-purpose">${p.author.purposeTag || ''}</span>
+          </div>
+          <div style="margin-top:6px;font-size:14px;line-height:1.5;">
+            ${p.content.replace(/\n/g, '<br/>')}
+          </div>
+          <div class="muted" style="margin-top:4px;font-size:12px;">
+            ${meta}${flag}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 멤버만 글 작성 폼 표시
+  if (formEl) {
+    if (isMember) formEl.classList.remove('hidden');
+    else formEl.classList.add('hidden');
+  }
+}
+
+// 커뮤니티 글 작성
+async function submitCommunityPost() {
+  if (!currentCommunityId) {
+    alert('먼저 커뮤니티를 선택해주세요.');
+    return;
+  }
+
+  const inputEl = $('#communityPostInput');
+  const msgEl = $('#communityPostMsg');
+  if (!inputEl || !msgEl) return;
+
+  const text = inputEl.value.trim();
+  if (!text) {
+    msgEl.classList.remove('hidden');
+    msgEl.style.color = 'var(--danger)';
+    msgEl.textContent = '내용을 입력해주세요.';
+    setTimeout(() => msgEl.classList.add('hidden'), 2000);
+    return;
+  }
+
+  msgEl.classList.remove('hidden');
+  msgEl.style.color = 'var(--muted)';
+  msgEl.textContent = '작성 중...';
+
+  try {
+    const res = await api('/api/communities/post', {
+      method: 'POST',
+      body: JSON.stringify({
+        communityId: currentCommunityId,
+        content: text
+      })
+    });
+
+    if (!res.ok) {
+      msgEl.style.color = 'var(--danger)';
+      msgEl.textContent = res.error || '글 작성 중 오류가 발생했습니다.';
+      setTimeout(() => msgEl.classList.add('hidden'), 2500);
+      return;
+    }
+
+    inputEl.value = '';
+    msgEl.style.color = 'var(--accent)';
+    msgEl.textContent = '작성되었습니다.';
+    setTimeout(() => msgEl.classList.add('hidden'), 2000);
+
+    // 최신 글 목록 다시 불러오기
+    if (currentCommunityId && currentCommunityName) {
+      openCommunityPosts(currentCommunityId, currentCommunityName);
+    }
+  } catch (e) {
+    msgEl.style.color = 'var(--danger)';
+    msgEl.textContent = '네트워크 오류로 글을 작성하지 못했습니다.';
+    setTimeout(() => msgEl.classList.add('hidden'), 2500);
   }
 }
 
@@ -668,6 +824,17 @@ $('#communityCreateBtn')?.addEventListener('click', async () => {
     setTimeout(() => {
       msgEl.classList.add('hidden');
     }, 2000);
+  }
+});
+
+// 커뮤니티 글 작성 버튼
+$('#communityPostBtn')?.addEventListener('click', () => {
+  submitCommunityPost();
+});
+$('#communityPostInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitCommunityPost();
   }
 });
 
