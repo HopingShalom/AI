@@ -16,7 +16,7 @@ export async function onRequestGet(context) {
     }
 
     const user = await context.env.DB.prepare(
-      `SELECT id, email, display_name, bio, purpose_tag, profile_visibility, is_expert, expert_type, risk_level FROM users WHERE id = ?`
+      `SELECT id, email, display_name, bio, purpose_tag, profile_visibility, is_expert, expert_type, risk_level, proxy_enabled FROM users WHERE id = ?`
     ).bind(session.user_id).first();
 
     return Response.json({ ok: true, user });
