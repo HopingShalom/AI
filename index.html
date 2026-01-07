@@ -17,15 +17,10 @@
         <div id="registerFields" class="hidden">
           <input type="text" id="authName" placeholder="표시 이름" />
           <input type="text" id="authPurpose" placeholder="대화 목적 태그" />
-          <label class="checkbox-label">
-            <input type="checkbox" id="authAge" /> 만 15세 이상입니다
-          </label>
+          <label class="checkbox-label"><input type="checkbox" id="authAge" /> 만 15세 이상입니다</label>
         </div>
         <button type="submit" id="authSubmit">로그인</button>
-        <p class="auth-switch">
-          <span id="authSwitchText">계정이 없으신가요?</span>
-          <a href="#" id="authSwitchLink">회원가입</a>
-        </p>
+        <p class="auth-switch"><span id="authSwitchText">계정이 없으신가요?</span> <a href="#" id="authSwitchLink">회원가입</a></p>
         <p class="error hidden" id="authError"></p>
       </form>
     </div>
@@ -43,13 +38,34 @@
     <!-- Feed -->
     <section class="page" id="page-feed" data-page="feed">
       <h1>Feed</h1>
-      <p class="muted">커뮤니티 글 / 공개 My AI 대화가 여기에 표시됩니다. (Stage 3에서 구현)</p>
+      <div id="feedContent"><p class="muted">로딩 중...</p></div>
     </section>
 
     <!-- Chat -->
     <section class="page hidden" id="page-chat" data-page="chat">
-      <h1>Chat</h1>
-      <p class="muted">My AI 및 1:1 채팅 (Stage 3-4에서 구현)</p>
+      <div id="chatContainer">
+        <!-- 대화 목록 -->
+        <div id="chatList">
+          <div class="chat-header">
+            <h1>Chat</h1>
+            <button id="newChatBtn" class="btn-small">+ 새 대화</button>
+          </div>
+          <div id="conversationList"></div>
+        </div>
+        <!-- 채팅 화면 -->
+        <div id="chatView" class="hidden">
+          <div class="chat-header">
+            <button id="backToListBtn" class="btn-back">←</button>
+            <span id="chatTitle">My AI</span>
+            <button id="chatSettingsBtn" class="btn-small">⚙️</button>
+          </div>
+          <div id="messagesContainer"></div>
+          <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." />
+            <button id="sendBtn">전송</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Search -->
@@ -62,11 +78,26 @@
     <!-- Profile -->
     <section class="page hidden" id="page-profile" data-page="profile">
       <h1>Profile</h1>
-      <div id="profileContent">
-        <p class="muted">로그인하면 프로필이 표시됩니다.</p>
-      </div>
+      <div id="profileContent"><p class="muted">로그인하면 프로필이 표시됩니다.</p></div>
     </section>
   </main>
+
+  <!-- 공개범위 설정 모달 -->
+  <div class="modal-overlay hidden" id="visibilityModal">
+    <div class="modal">
+      <h2>대화 공개범위 설정</h2>
+      <select id="visibilitySelect">
+        <option value="private">비공개</option>
+        <option value="followers">팔로워만</option>
+        <option value="public">전체 공개</option>
+      </select>
+      <p class="muted" style="margin:12px 0;font-size:13px;">
+        "전체 공개" 선택 시 내 프로필과 함께 Feed에 노출됩니다.
+      </p>
+      <button id="saveVisibilityBtn" class="btn-primary">저장</button>
+      <button id="closeVisibilityBtn" class="btn-secondary" style="margin-top:8px;">취소</button>
+    </div>
+  </div>
 
   <nav class="tabbar">
     <button class="tab active" data-tab="feed">Feed</button>
