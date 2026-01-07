@@ -75,8 +75,8 @@ export async function onRequestPost(context) {
     const geminiData = await geminiResponse.json();
 
     let aiReply = '죄송합니다. 응답을 생성할 수 없습니다.';
-    if (geminiData.candidates?.?.content?.parts?.?.text) {
-      aiReply = geminiData.candidates.content.parts.text;
+    if (geminiData.candidates?.[0]?.content?.parts?.[0]?.text) {
+  aiReply = geminiData.candidates[0].content.parts.text;
     }
 
     // AI 응답 저장
