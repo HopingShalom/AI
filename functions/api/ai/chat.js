@@ -58,10 +58,10 @@ export async function onRequestPost(context) {
 
     // Gemini API 호출
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${context.env.GEMINI_API_KEY}`,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + context.env.GEMINI_API_KEY,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: messages,
           generationConfig: {
@@ -72,13 +72,40 @@ export async function onRequestPost(context) {
       }
     );
 
-    let aiReply = '죄송합니다. 응답을 생성할 수 없습니다.';
+    let aiReply = "";
 
     if (!geminiResponse.ok) {
-      // HTTP 에러일 때는 에러 메시지 일부만 보여주는 편이 디버깅에 유리
-      const errText = await geminiResponse.text();
-      aiReply = '(Gemini 호출 실패: ' + errText.slice(0, 80) + ' …)';
+      // HTTP 에러 (429 포함) → 데모용 더미 응답으로 대체
+      let errJson = null;
+      try {
+        errJson = await geminiResponse.json();
+      } catch (_) {
+        // json 파싱 실패 시 무시
+      }
+
+      let code = null;
+      let msg = "";
+      if (errJson && errJson.error) {
+        code = errJson.error.code;
+        msg = errJson.error.message || "";
+      }
+
+      if (code === 429) {
+        // 쿼터 초과: 사용자에게는 친절한 문구 + 간단한 규칙 기반 답변
+        aiReply =
+          "지금 사용 중인 Gemini 모델의 무료 사용 한도가 초과되어, " +
+          "대신 간단한 데모용 응답을 드릴게요.\n\n" +
+          "당신의 메시지 요약:\n" +
+          (message.length > 120 ? message.slice(0, 120) + "…" : message);
+      } else {
+        // 그 외 에러: 코드/메시지 요약
+        aiReply =
+          "AI 응답 생성 중 오류가 발생했습니다." +
+          (code ? " (코드: " + code + ")" : "") +
+          (msg ? " - " + msg : "");
+      }
     } else {
+      // HTTP 200 OK → 실제 Gemini 응답 파싱
       const geminiData = await geminiResponse.json();
 
       if (
@@ -92,10 +119,16 @@ export async function onRequestPost(context) {
           cand.content &&
           Array.isArray(cand.content.parts) &&
           cand.content.parts.length > 0 &&
-          typeof cand.content.parts[0].text === 'string'
+          typeof cand.content.parts[0].text === "string"
         ) {
           aiReply = cand.content.parts[0].text;
         }
+      }
+
+      if (!aiReply) {
+        // 혹시라도 candidates가 비어 있는 경우
+        aiReply =
+          "모델이 이해하지 못한 것 같아요. 조금 더 구체적으로 말씀해 주실 수 있을까요?";
       }
     }
     // AI 응답 저장
