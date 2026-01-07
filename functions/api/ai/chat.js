@@ -72,13 +72,32 @@ export async function onRequestPost(context) {
       }
     );
 
-    const geminiData = await geminiResponse.json();
-
     let aiReply = '죄송합니다. 응답을 생성할 수 없습니다.';
-    if (geminiData.candidates?.[0]?.content?.parts?.[0]?.text) {
-  aiReply = geminiData.candidates[0].content.parts.text;
-    }
 
+    if (!geminiResponse.ok) {
+      // HTTP 에러일 때는 에러 메시지 일부만 보여주는 편이 디버깅에 유리
+      const errText = await geminiResponse.text();
+      aiReply = '(Gemini 호출 실패: ' + errText.slice(0, 80) + ' …)';
+    } else {
+      const geminiData = await geminiResponse.json();
+
+      if (
+        geminiData &&
+        Array.isArray(geminiData.candidates) &&
+        geminiData.candidates.length > 0
+      ) {
+        const cand = geminiData.candidates[0];
+        if (
+          cand &&
+          cand.content &&
+          Array.isArray(cand.content.parts) &&
+          cand.content.parts.length > 0 &&
+          typeof cand.content.parts[0].text === 'string'
+        ) {
+          aiReply = cand.content.parts[0].text;
+        }
+      }
+    }
     // AI 응답 저장
     const aiMsgId = 'msg_' + crypto.randomUUID().slice(0, 8);
     await context.env.DB.prepare(
