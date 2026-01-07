@@ -52,19 +52,22 @@
           </div>
           <div id="conversationList"></div>
         </div>
-        <!-- 채팅 화면 -->
-        <div id="chatView" class="hidden">
-          <div class="chat-header">
-            <button id="backToListBtn" class="btn-back">←</button>
-            <span id="chatTitle">My AI</span>
-            <button id="chatSettingsBtn" class="btn-small">⚙️</button>
-          </div>
-          <div id="messagesContainer"></div>
-          <div class="chat-input-area">
-            <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." />
-            <button id="sendBtn">전송</button>
-          </div>
+    <!-- 채팅 화면 -->
+    <div id="chatView" class="hidden">
+      <div class="chat-header">
+        <button id="backToListBtn" class="btn-back">←</button>
+        <span id="chatTitle">My AI</span>
+        <div style="display:flex; gap:6px;">
+          <button id="shareChatBtn" class="btn-small">공유</button>
+          <button id="chatSettingsBtn" class="btn-small">⚙️</button>
         </div>
+      </div>
+      <div id="messagesContainer"></div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." />
+        <button id="sendBtn">전송</button>
+      </div>
+    </div>
       </div>
     </section>
 
