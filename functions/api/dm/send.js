@@ -1,3 +1,13 @@
+function hasCrisisKeyword(text) {
+  if (!text) return false;
+  const lower = String(text).toLowerCase();
+  const patterns = [
+    '자살', '죽고 싶', '죽고싶', '삶을 끝내고 싶', '극단적인 선택',
+    '자해', 'self-harm', 'self harm', 'harm myself', 'kill myself'
+  ];
+  return patterns.some(p => lower.includes(p));
+}
+
 export async function onRequestPost(context) {
   const authHeader = context.request.headers.get("Authorization") || "";
   const token = authHeader.replace("Bearer ", "");
@@ -302,8 +312,9 @@ export async function onRequestPost(context) {
         // 프록시 응답 실패는 DM 전체 실패로 간주하지 않고 무시
       }
     }
+    // 위기 키워드 감지 (사용자 메시지 또는 프록시 응답 중 하나라도 포함하면 true)
+    const crisisAlert = hasCrisisKeyword(content) || hasCrisisKeyword(proxyText);
 
-    // 최종 응답 (사용자 메시지 정보만 내려줘도 충분)
     return Response.json({
       ok: true,
       conversationId: convId,
@@ -312,7 +323,8 @@ export async function onRequestPost(context) {
         senderId: me,
         senderType: "user",
         content: content
-      }
+      },
+      crisisAlert
     });
   } catch (e) {
     const msg = e && e.message ? e.message : String(e);
