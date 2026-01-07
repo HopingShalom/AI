@@ -71,12 +71,14 @@ export async function onRequestPost(context) {
       .first();
 
     if (existing) {
-      // 이미 존재하면 그 게시물의 공개범위만 업데이트할 수도 있음
+      // 이미 존재하면 게시물 공개범위 + 대화 공개범위를 함께 업데이트
       await context.env.DB.prepare(
         "UPDATE posts SET visibility = ? WHERE id = ?"
-      )
-        .bind(visibility, existing.id)
-        .run();
+      ).bind(visibility, existing.id).run();
+
+      await context.env.DB.prepare(
+        "UPDATE ai_conversations SET visibility = ? WHERE id = ?"
+      ).bind(visibility, conversationId).run();
 
       return Response.json({
         ok: true,
@@ -96,11 +98,16 @@ export async function onRequestPost(context) {
       .bind(
         postId,
         session.user_id,
-        null, // content는 지금은 사용 안 함(설명 텍스트 추가 시 활용)
+        null,
         conversationId,
         visibility
       )
       .run();
+
+    // 새 공유를 만들 때도 대화 공개범위를 동일하게 맞춤
+    await context.env.DB.prepare(
+      "UPDATE ai_conversations SET visibility = ? WHERE id = ?"
+    ).bind(visibility, conversationId).run();
 
     return Response.json({
       ok: true,
