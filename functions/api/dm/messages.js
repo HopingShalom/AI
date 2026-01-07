@@ -10,7 +10,8 @@ export async function onRequestGet(context) {
   }
 
   const url = new URL(context.request.url);
-  const conversationId = url.searchParams.get("conversationId");
+  const rawId = url.searchParams.get("conversationId") || "";
+  const conversationId = String(rawId).trim(); // 공백 등 제거
 
   if (!conversationId) {
     return Response.json(
@@ -36,13 +37,25 @@ export async function onRequestGet(context) {
     const me = session.user_id;
 
     // 이 대화방에 내가 속해 있는지 확인
-    const conv = await context.env.DB.prepare(
+    let conv = await context.env.DB.prepare(
       "SELECT id, user_a_id, user_b_id " +
         "FROM dm_conversations " +
         "WHERE id = ?"
     )
       .bind(conversationId)
       .first();
+
+    // 혹시라도 id 앞뒤 공백 등으로 안 맞는 경우를 대비해 fallback
+    if (!conv) {
+      conv = await context.env.DB.prepare(
+        "SELECT id, user_a_id, user_b_id " +
+          "FROM dm_conversations " +
+          "WHERE TRIM(id) = TRIM(?) " +
+          "LIMIT 1"
+      )
+        .bind(conversationId)
+        .first();
+    }
 
     if (!conv) {
       return Response.json(
@@ -64,7 +77,7 @@ export async function onRequestGet(context) {
         "WHERE conversation_id = ? " +
         "ORDER BY created_at ASC"
     )
-      .bind(conversationId)
+      .bind(conv.id) // conv.id 를 기준으로 사용
       .all();
 
     return Response.json({ ok: true, messages: msgsRes.results || [] });
