@@ -342,11 +342,49 @@ function closeDmView() {
   $('#dmList').classList.remove('hidden');
 }
 
+// Search 탭에서 DM 시작
+async function startDmFromSearch(targetUserId, displayName) {
+  if (!authToken) {
+    // 로그인 안 되어 있으면 로그인 모달 띄우기
+    authModal.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    // 새 DM을 시작하면서 첫 인사 메시지를 같이 보냄
+    const initialText = '안녕하세요! DM을 시작해봤어요.';
+
+    const data = await api('/api/dm/send', {
+      method: 'POST',
+      body: JSON.stringify({
+        targetUserId,
+        content: initialText
+      })
+    });
+
+    if (!data.ok) {
+      alert('DM 시작 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
+      return;
+    }
+
+    const convId = data.conversationId;
+    // Chat 탭으로 전환 후, DM 목록 갱신 & 방 열기
+    showPage('chat');
+    await loadDmList();
+    openDmConversation(convId, { displayName });
+  } catch (e) {
+    alert('네트워크 오류로 DM을 시작하지 못했습니다.');
+  }
+}
+
 // ===== Search =====
 async function loadSearchUsers(query = '') {
   const data = await api(`/api/users/search?q=${encodeURIComponent(query)}`);
   const container = $('#searchResults');
-  if (!data.ok || !data.users?.length) { container.innerHTML = '<p class="muted">검색 결과가 없습니다</p>'; return; }
+  if (!data.ok || !data.users?.length) {
+    container.innerHTML = '<p class="muted">검색 결과가 없습니다</p>';
+    return;
+  }
 
   container.innerHTML = data.users.map(u => `
     <div class="user-card">
@@ -355,14 +393,37 @@ async function loadSearchUsers(query = '') {
         ${u.is_expert ? `<span class="badge">${u.expert_type || '전문가'}</span>` : ''}
         <span class="user-purpose">${u.purpose_tag}</span>
       </div>
-      <button class="btn-follow ${u.isFollowing ? 'following' : ''}" data-user-id="${u.id}">${u.isFollowing ? '팔로잉' : '팔로우'}</button>
+      <div>
+        <button class="btn-follow ${u.isFollowing ? 'following' : ''}" data-user-id="${u.id}">
+          ${u.isFollowing ? '팔로잉' : '팔로우'}
+        </button>
+        <button class="btn-dm" data-user-id="${u.id}" data-user-name="${u.display_name}">
+          DM
+        </button>
+      </div>
     </div>
   `).join('');
 
+  // 팔로우 버튼
   container.querySelectorAll('.btn-follow').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const data = await api('/api/follow/toggle', { method: 'POST', body: JSON.stringify({ targetUserId: btn.dataset.userId }) });
-      if (data.ok) { btn.textContent = data.action === 'followed' ? '팔로잉' : '팔로우'; btn.classList.toggle('following', data.action === 'followed'); }
+      const data = await api('/api/follow/toggle', {
+        method: 'POST',
+        body: JSON.stringify({ targetUserId: btn.dataset.userId })
+      });
+      if (data.ok) {
+        btn.textContent = data.action === 'followed' ? '팔로잉' : '팔로우';
+        btn.classList.toggle('following', data.action === 'followed');
+      }
+    });
+  });
+
+  // DM 버튼
+  container.querySelectorAll('.btn-dm').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const userId = btn.dataset.userId;
+      const userName = btn.dataset.userName;
+      startDmFromSearch(userId, userName);
     });
   });
 }
