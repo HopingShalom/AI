@@ -92,11 +92,39 @@
     </section>
 
     <!-- Search -->
-    <section class="page hidden" id="page-search" data-page="search">
-      <h1>Search</h1>
-      <input type="text" id="searchInput" placeholder="사용자 검색..." class="search-input" />
-      <div id="searchResults" class="user-list"></div>
-    </section>
+<section class="page hidden" id="page-search" data-page="search">
+  <h1>Search</h1>
+
+  <!-- 사용자 검색 -->
+  <input type="text" id="searchInput" placeholder="사용자 검색..." class="search-input" />
+  <div id="searchResults" class="user-list"></div>
+
+  <hr style="margin:20px 0;border-color:var(--line);" />
+
+  <!-- 커뮤니티 섹션 -->
+  <h2 style="font-size:16px;margin-bottom:10px;">Communities</h2>
+  <p class="muted" style="font-size:13px;margin-bottom:10px;">
+    관심 있는 주제의 커뮤니티를 찾거나 직접 만들어 보세요.
+  </p>
+
+  <!-- 커뮤니티 생성 폼 -->
+  <div id="communityCreate" class="profile-section" style="margin-bottom:16px;">
+    <label>새 커뮤니티 만들기</label>
+    <input type="text" id="communityNameInput" placeholder="커뮤니티 이름 (예: 철학 토론방)" class="search-input" />
+    <input type="text" id="communityDescInput" placeholder="간단한 설명" class="search-input" />
+    <label class="checkbox-label">
+      <input type="checkbox" id="communityPrivateInput" />
+      비공개 / 승인제 커뮤니티 (체크하면 가입 승인 필요)
+    </label>
+    <button id="communityCreateBtn" class="btn-primary" style="margin-top:6px;">커뮤니티 생성</button>
+    <p id="communityCreateMsg" class="msg hidden"></p>
+  </div>
+
+  <!-- 커뮤니티 목록 -->
+  <div id="communityList" class="user-list">
+    <p class="muted">커뮤니티를 불러오는 중입니다...</p>
+  </div>
+</section>
 
     <!-- Profile -->
     <section class="page hidden" id="page-profile" data-page="profile">
