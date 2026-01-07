@@ -36,6 +36,14 @@ export async function onRequestPost(context) {
       `UPDATE ai_conversations SET visibility = ? WHERE id = ?`
     ).bind(visibility, conversationId).run();
 
+    await context.env.DB.prepare(
+    `UPDATE posts 
+     SET visibility = ? 
+     WHERE ai_conversation_id = ? 
+       AND user_id = ? 
+       AND type = 'ai_share'`
+    ).bind(visibility, conversationId, session.user_id).run();
+    
     return Response.json({ ok: true, message: '공개범위가 변경되었습니다' });
   } catch (e) {
     return Response.json({ ok: false, error: e?.message || String(e) }, { status: 500 });
