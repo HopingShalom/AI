@@ -343,7 +343,7 @@ function renderDmMessages(messages) {
   container.scrollTop = container.scrollHeight;
 }
 
-// DM 메시지 전송 (전체 목록 다시 가져오기 포함)
+// DM 메시지 전송 (전체 목록 다시 가져오기 + 위기 배너)
 async function sendDmMessage() {
   if (!currentDmConversationId) {
     alert('먼저 DM 대화를 선택하세요.');
@@ -376,6 +376,11 @@ async function sendDmMessage() {
     if (!data.ok) {
       dmMessages.innerHTML += `<div class="message assistant" style="color:var(--danger);">오류: ${data.error || ''}</div>`;
       return;
+    }
+
+    // 위기 감지 플래그가 있으면 도움 배너 표시
+    if (data.crisisAlert) {
+      showCrisisBanner();
     }
 
     // 서버 기준 최신 상태 다시 불러오기 (프록시 AI 응답 포함)
