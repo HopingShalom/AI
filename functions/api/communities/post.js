@@ -97,29 +97,30 @@ export async function onRequestPost(context) {
 
     const postId = "post_" + crypto.randomUUID().slice(0, 8);
 
-    // visibility는 일단 'public'로 통일 (커뮤니티 내부 기준)
-    await context.env.DB.prepare(
-      "INSERT INTO posts (id, user_id, type, content, ai_conversation_id, visibility, community_id) " +
-        "VALUES (?, ?, 'community', ?, NULL, 'public', ?)"
-    )
-      .bind(postId, me, content, communityId)
-      .run();
+await context.env.DB.prepare(
+  "INSERT INTO posts (id, user_id, type, content, ai_conversation_id, visibility, community_id) " +
+    "VALUES (?, ?, 'community', ?, NULL, 'public', ?)"
+)
+  .bind(postId, me, content, communityId)
+  .run();
 
-        // 위기 키워드가 있으면 moderation_flag='crisis'로 표시
-    if (hasCrisisKeyword(content)) {
-      await context.env.DB.prepare(
-        "UPDATE posts SET moderation_flag = 'crisis' WHERE id = ?"
-      ).bind(postId).run();
-    }
+// 위기 키워드 감지
+const crisis = hasCrisisKeyword(content);
+if (crisis) {
+  await context.env.DB.prepare(
+    "UPDATE posts SET moderation_flag = 'crisis' WHERE id = ?"
+  ).bind(postId).run();
+}
 
-    return Response.json({
-      ok: true,
-      post: {
-        id: postId,
-        communityId: communityId,
-        content: content
-      }
-    });
+return Response.json({
+  ok: true,
+  post: {
+    id: postId,
+    communityId: communityId,
+    content: content
+  },
+  crisisAlert: crisis
+});
   } catch (e) {
     const msg = e && e.message ? e.message : String(e);
     return Response.json({ ok: false, error: msg }, { status: 500 });
