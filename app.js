@@ -703,29 +703,34 @@ async function submitCommunityPost() {
 
   try {
     const res = await api('/api/communities/post', {
-      method: 'POST',
-      body: JSON.stringify({
-        communityId: currentCommunityId,
-        content: text
-      })
-    });
+  method: 'POST',
+  body: JSON.stringify({
+    communityId: currentCommunityId,
+    content: text
+  })
+});
 
-    if (!res.ok) {
-      msgEl.style.color = 'var(--danger)';
-      msgEl.textContent = res.error || '글 작성 중 오류가 발생했습니다.';
-      setTimeout(() => msgEl.classList.add('hidden'), 2500);
-      return;
-    }
+if (!res.ok) {
+  msgEl.style.color = 'var(--danger)';
+  msgEl.textContent = res.error || '글 작성 중 오류가 발생했습니다.';
+  setTimeout(() => msgEl.classList.add('hidden'), 2500);
+  return;
+}
 
-    inputEl.value = '';
-    msgEl.style.color = 'var(--accent)';
-    msgEl.textContent = '작성되었습니다.';
-    setTimeout(() => msgEl.classList.add('hidden'), 2000);
+// 위기 키워드 감지 시 도움 배너 표시
+if (res.crisisAlert) {
+  showCrisisBanner();
+}
 
-    // 최신 글 목록 다시 불러오기
-    if (currentCommunityId && currentCommunityName) {
-      openCommunityPosts(currentCommunityId, currentCommunityName);
-    }
+inputEl.value = '';
+msgEl.style.color = 'var(--accent)';
+msgEl.textContent = '작성되었습니다.';
+setTimeout(() => msgEl.classList.add('hidden'), 2000);
+
+// 최신 글 목록 다시 불러오기
+if (currentCommunityId && currentCommunityName) {
+  openCommunityPosts(currentCommunityId, currentCommunityName);
+}
   } catch (e) {
     msgEl.style.color = 'var(--danger)';
     msgEl.textContent = '네트워크 오류로 글을 작성하지 못했습니다.';
